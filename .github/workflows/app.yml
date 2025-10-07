@@ -1,0 +1,51 @@
+name: App Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'k8s/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-2
+      ECR_REPO: 039612867624.dkr.ecr.us-east-2.amazonaws.com/wiz-app
+      K8S_DIR: k8s
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag and Push image
+        run: |
+          docker build -t wiz-app:latest ./app
+          docker tag wiz-app:latest $ECR_REPO:latest
+          docker push $ECR_REPO:latest
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name wiz-cluster
+
+      - name: Deploy to EKS
+        run: |
+          kubectl apply -f $K8S_DIR/
+          kubectl rollout status deployment/wiz

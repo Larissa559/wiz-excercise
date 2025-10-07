@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiz-app
+  labels:
+    app: wiz-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wiz-app
+  template:
+    metadata:
+      labels:
+        app: wiz-app
+    spec:
+      containers:
+      - name: web
+        image: 039612867624.dkr.ecr.us-east-2.amazonaws.com/wiz-app:latest
+        ports:
+        - containerPort: 8080
+        env:
+          - name: MONGO_USER
+            value: "wizuser"
+          - name: MONGO_PASS
+            value: "12345"
+          - name: MONGO_HOST
+            value: "3.15.231.120"
+
+---
+# Insecure: cluster-admin binding for demo
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wiz-app-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
